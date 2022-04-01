@@ -1,4 +1,6 @@
+import os
 import re
+import sys
 
 
 def is_there_comment(string):
@@ -64,9 +66,7 @@ def check_s6(string, counter_empty_line):
     return True
 
 
-def main():
-    path = input()
-
+def parse_file(path):
     with open(path) as file:
         counter = 0
         counter_empty_line = 0
@@ -77,21 +77,33 @@ def main():
             line_without_new_line = line.rstrip('\n')
 
             if not check_s1(line_without_new_line):
-                print(f'Line {counter}: S001 Too long')
+                print(f'{path}: Line {counter}: S001 Too long')
             if not check_s2(line_without_new_line):
-                print(f'Line {counter}: S002 Wrong indentation')
+                print(f'{path}: Line {counter}: S002 Wrong indentation')
             if not check_s3(line_without_new_line):
-                print(f'Line {counter}: S003 Unnecessary semicolon')
+                print(f'{path}: Line {counter}: S003 Unnecessary semicolon')
             if not check_s4(line_without_new_line):
-                print(f'Line {counter}: S004 At least two spaces required before inline comments')
+                print(f'{path}: Line {counter}: S004 At least two spaces required before inline comments')
             if not check_s5(line_without_new_line):
-                print(f'Line {counter}: S005 TODO found')
+                print(f'{path}: Line {counter}: S005 TODO found')
             if not check_s6(line_without_new_line, counter_empty_line):
                 counter_empty_line = 0
-                print(f'Line {counter}: S006 More than two blank lines')
+                print(f'{path}: Line {counter}: S006 More than two blank lines')
 
             if not line_without_new_line:
                 counter_empty_line += 1
+
+
+def main():
+    args = sys.argv
+    argument = args[1]
+    if argument.endswith('.py'):
+        parse_file(argument)
+    else:
+        list_files = sorted(os.listdir(argument))
+        for file_name in list_files:
+            if file_name.endswith('.py'):
+                parse_file(argument + '/' + file_name)
 
 
 if __name__ == '__main__':
