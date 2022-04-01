@@ -66,6 +66,26 @@ def check_s6(string, counter_empty_line):
     return True
 
 
+def check_s7(string):
+    if re.search(r'(def|class) {2,}', string):
+        return False
+    return True
+
+
+def check_s8(string):
+    if 'class' in string:
+        if not bool(re.match(r'class +[A-Z][a-z]+([A-Z][a-z]+)?(\([A-Z][a-z]+[A-Z][a-z]+\))?:', string)):
+            return False
+    return True
+
+
+def check_s9(string):
+    if 'def' in string:
+        if not bool(re.search(r'def +[a-z_0-9]+\(\):', string)):
+            return False
+    return True
+
+
 def parse_file(path):
     with open(path) as file:
         counter = 0
@@ -87,11 +107,17 @@ def parse_file(path):
             if not check_s5(line_without_new_line):
                 print(f'{path}: Line {counter}: S005 TODO found')
             if not check_s6(line_without_new_line, counter_empty_line):
-                counter_empty_line = 0
                 print(f'{path}: Line {counter}: S006 More than two blank lines')
-
+            if not check_s7(line_without_new_line):
+                print(f"{path}: Line {counter}: S007 Too many spaces after 'class'")
+            if not check_s8(line_without_new_line):
+                print(f"{path}: Line {counter}: S008 Class name 'user' should use CamelCase")
+            if not check_s9(line_without_new_line):
+                print(f"{path}: Line {counter}: S009 Function name 'Print2' should use snake_case")
             if not line_without_new_line:
                 counter_empty_line += 1
+            else:
+                counter_empty_line = 0
 
 
 def main():
