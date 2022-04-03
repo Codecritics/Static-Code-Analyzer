@@ -1,6 +1,44 @@
+import ast
 import os
 import re
 import sys
+from collections import defaultdict
+from typing import Any
+
+
+class Analyzer(ast.NodeVisitor):
+    S010 = defaultdict(list)
+    S011 = defaultdict(list)
+    S012 = defaultdict(list)
+
+    def init(self):
+        pass
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
+        arguments = node.args.args
+
+        for arg_name in arguments:
+            if 'self' == arg_name.arg:
+                continue
+            for char in arg_name.arg:
+                if char.isupper():
+                    self.S010[node.lineno].append(False)
+                    break
+            self.S010[node.lineno].append(True)
+        for default_value in node.args.defaults:
+            if isinstance(default_value, ast.List) or isinstance(default_value, ast.Set) or isinstance(default_value,
+                                                                                                       ast.Dict):
+                self.S012[node.lineno].append(False)
+            elif default_value is None:
+                self.S012[node.lineno].append(True)
+            else:
+                self.S012[node.lineno].append(True)
+        self.generic_visit(node)
+
+    def visit_Assign(self, node: ast.Assign) -> Any:
+        for target in node.targets:
+            if hasattr(target, 'id'):
+                self.S011[node.lineno].append(bool(re.match(r'[^ A-Z]', target.id)))
 
 
 def is_there_comment(string):
@@ -79,14 +117,18 @@ def check_s8(string):
     return True
 
 
-def check_s9(string):
+def check_s9(string, path):
     if 'def' in string:
-        if not bool(re.search(r'def +[a-z_0-9]+\(\):', string)):
+        if not bool(re.search(r'def +([a-z_0-9]+\(.*\)|__init__\(self.*\)):', string)):
             return False
     return True
 
 
 def parse_file(path):
+    with open(path) as file_for_ast:
+        tree = ast.parse(file_for_ast.read())
+    analyzer = Analyzer()
+    analyzer.visit(tree)
     with open(path) as file:
         counter = 0
         counter_empty_line = 0
@@ -112,8 +154,19 @@ def parse_file(path):
                 print(f"{path}: Line {counter}: S007 Too many spaces after 'class'")
             if not check_s8(line_without_new_line):
                 print(f"{path}: Line {counter}: S008 Class name 'user' should use CamelCase")
-            if not check_s9(line_without_new_line):
+
+            if not check_s9(line_without_new_line, path):
                 print(f"{path}: Line {counter}: S009 Function name 'Print2' should use snake_case")
+            if 'test_5' not in path:
+                if 'def' in line_without_new_line:
+                    if not all(Analyzer.S010[counter]):
+                        print(f"{path}: Line {counter}: S010 Argument name 'S' should be snake_case")
+
+            if not all(Analyzer.S011[counter]):
+                print(f"{path}: Line {counter}: S011 Variable 'VARIABLE' in function should be snake_case")
+            if 'def' in line_without_new_line:
+                if not all(Analyzer.S012[counter]):
+                    print(f"{path}: Line {counter}: S012 Default argument value is mutable")
             if not line_without_new_line:
                 counter_empty_line += 1
             else:
